@@ -1,0 +1,36 @@
+name: Spotify Playlist Refresh
+
+on:
+  # Run at 3 AM UTC every day
+  schedule:
+    - cron: '0 3 * * *'
+
+  # Manual trigger (from the GitHub UI)
+  workflow_dispatch:
+
+jobs:
+  refresh-playlist:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+
+    - name: Install dependencies
+      run: npm install spotify-web-api-node
+
+    - name: Refresh Spotify Playlist
+      run: node index.js
+      env:
+        SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+        SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+        SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
+        DAILY_PLAYLIST_ID: ${{ secrets.DAILY_PLAYLIST_ID }}
+        A_LIST_PLAYLIST_ID: ${{ secrets.A_LIST_PLAYLIST_ID }}
+        B_LIST_PLAYLIST_ID: ${{ secrets.B_LIST_PLAYLIST_ID }}
+        FAVES_2025_PLAYLIST_ID: ${{ secrets.FAVES_2025_PLAYLIST_ID }}
