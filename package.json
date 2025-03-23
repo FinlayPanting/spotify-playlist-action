@@ -1,0 +1,14 @@
+{
+  "name": "spotify-playlist-rotator",
+  "version": "1.0.0",
+  "description": "Automatically rotates songs in Spotify playlists",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "spotify-web-api-node": "^5.0.2"
+  }
+}
