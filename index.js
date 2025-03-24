@@ -21,9 +21,9 @@ const config = {
     FAVES_2025: process.env.FAVES_2025_PLAYLIST_ID
   },
   tracks: {
-    A_LIST_COUNT: 10,
-    B_LIST_COUNT: 5,
-    FAVES_2025_COUNT: 10
+    A_LIST_COUNT: parseInt(process.env.A_LIST_COUNT || '10'),
+    B_LIST_COUNT: parseInt(process.env.B_LIST_COUNT || '5'),
+    FAVES_2025_COUNT: parseInt(process.env.FAVES_2025_COUNT || '10')
   }
 };
 
