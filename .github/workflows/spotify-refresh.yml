@@ -7,19 +7,6 @@ on:
   
   # Manual trigger (from the GitHub UI)
   workflow_dispatch:
-    inputs:
-      a_list_count:
-        description: 'Number of tracks from A-List'
-        required: false
-        default: '10'
-      b_list_count:
-        description: 'Number of tracks from B-List'
-        required: false
-        default: '5'
-      faves_2025_count:
-        description: 'Number of tracks from 2025 Favorites'
-        required: false
-        default: '10'
 
 jobs:
   refresh-playlist:
@@ -48,6 +35,6 @@ jobs:
         A_LIST_PLAYLIST_ID: ${{ secrets.A_LIST_PLAYLIST_ID }}
         B_LIST_PLAYLIST_ID: ${{ secrets.B_LIST_PLAYLIST_ID }}
         FAVES_2025_PLAYLIST_ID: ${{ secrets.FAVES_2025_PLAYLIST_ID }}
-        A_LIST_COUNT: ${{ github.event.inputs.a_list_count || secrets.A_LIST_COUNT || '10' }}
-        B_LIST_COUNT: ${{ github.event.inputs.b_list_count || secrets.B_LIST_COUNT || '5' }}
-        FAVES_2025_COUNT: ${{ github.event.inputs.faves_2025_count || secrets.FAVES_2025_COUNT || '10' }}
+        A_LIST_COUNT: ${{ secrets.A_LIST_COUNT || '10' }}
+        B_LIST_COUNT: ${{ secrets.B_LIST_COUNT || '5' }}
+        FAVES_2025_COUNT: ${{ secrets.FAVES_2025_COUNT || '10' }}
