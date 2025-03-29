@@ -2,8 +2,11 @@
 
 This GitHub Action automatically refreshes a Spotify playlist by:
 1. Clearing your daily playlist completely
-2. Adding all tracks from your "Everyday" playlist (your permanent tracks)
-3. Adding random tracks from your other playlists (A-List, B-List, and 2025 Favorites)
+2. Adding tracks in this specific order:
+   - Random tracks from your 2025 Favorites playlist
+   - All tracks from your "Everyday" playlist
+   - Random tracks from your A-List playlist
+   - Random tracks from your B-List playlist
 
 ## How It Works
 
@@ -30,7 +33,7 @@ This GitHub Action automatically refreshes a Spotify playlist by:
    - `EVERYDAY_PLAYLIST_ID`: ID of your everyday playlist with permanent tracks
    - `A_LIST_PLAYLIST_ID`: ID of your A-List playlist
    - `B_LIST_PLAYLIST_ID`: ID of your B-List playlist
-   - `FAVES_2025_PLAYLIST_ID`: ID of your 2025 Favorites playlist
+   - `FAVES_2025_PLAYLIST_ID`: ID of your 2025 favorites playlist
    
    **Track count secrets:**
    - `A_LIST_COUNT`: Number of tracks to pull from A-List (default: 10)
