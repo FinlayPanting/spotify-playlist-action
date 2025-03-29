@@ -3,8 +3,8 @@
 This GitHub Action automatically refreshes a Spotify playlist by:
 1. Clearing your daily playlist completely
 2. Adding tracks in this specific order:
+   - All tracks from your "Everyday" playlist (in reverse order so newest appear at top)
    - Random tracks from your 2025 Favorites playlist
-   - All tracks from your "Everyday" playlist
    - Random tracks from your A-List playlist
    - Random tracks from your B-List playlist
 
@@ -14,12 +14,13 @@ This GitHub Action automatically refreshes a Spotify playlist by:
 * It uses the GitHub Actions scheduler for reliable execution
 * All sensitive information is stored in GitHub Secrets
 * Track counts can be easily adjusted through GitHub Secrets
+* The Everyday playlist tracks are added in reverse order so your newest additions appear at the top
 
 ## Setup Instructions
 
 1. **Create a new "Everyday" playlist in Spotify**
    
-   Create a playlist with all the tracks you want to appear permanently in your daily playlist
+   Create a playlist with all the tracks you want to appear permanently in your daily playlist. New tracks added to the bottom of this playlist will appear at the top of your daily playlist.
 
 2. **Create GitHub Secrets**
 
