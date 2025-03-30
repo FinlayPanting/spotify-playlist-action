@@ -1,10 +1,8 @@
 // Spotify Daily Playlist Rotator (Script Version)
 // This script will:
-// 1. Pull 10 random songs from A-List playlist
-// 2. Pull 5 random songs from B-List playlist
-// 3. Pull 10 random songs from 2025 Favorites playlist
-// 4. Remove all source playlist tracks from Daily playlist
-// 5. Add the new random songs to Daily playlist
+// 1. Clear the daily playlist
+// 2. Add everyday tracks in reverse order (newest first)
+// 3. Add random tracks from 2025 Favorites, A-List, and B-List
 
 const SpotifyWebApi = require('spotify-web-api-node');
 
@@ -169,26 +167,36 @@ async function refreshDailyPlaylist() {
     await spotifyApi.replaceTracksInPlaylist(config.playlists.DAILY, []);
     console.log('Daily playlist cleared successfully');
     
-    // Step 2: Get and add all tracks from the "Everyday" playlist
+    // Step 2: Get all tracks from the "Everyday" playlist
     const everydayTracks = await getAllPlaylistTracks(config.playlists.EVERYDAY);
-    console.log(`Adding ${everydayTracks.length} permanent tracks from Everyday playlist`);
+    console.log(`Getting ${everydayTracks.length} tracks from Everyday playlist`);
     
-    if (everydayTracks.length > 0) {
-      await addTracksToPlaylist(config.playlists.DAILY, everydayTracks);
-      console.log(`Added ${everydayTracks.length} permanent tracks to daily playlist`);
+    // Step 3: Reverse the everyday tracks order so newest appear at the top
+    const reversedEverydayTracks = [...everydayTracks].reverse();
+    console.log('Reversed Everyday tracks so newest tracks will appear at top');
+    
+    // Step 4: Add the reversed everyday tracks
+    if (reversedEverydayTracks.length > 0) {
+      await addTracksToPlaylist(config.playlists.DAILY, reversedEverydayTracks);
+      console.log(`Added ${reversedEverydayTracks.length} Everyday tracks in reverse order`);
     }
     
-    // Step 3: Get new random tracks from each source playlist
+    // Step 5: Get new random tracks from each source playlist
+    const newFaves2025Tracks = await getRandomTracks(config.playlists.FAVES_2025, config.tracks.FAVES_2025_COUNT);
     const newAListTracks = await getRandomTracks(config.playlists.A_LIST, config.tracks.A_LIST_COUNT);
     const newBListTracks = await getRandomTracks(config.playlists.B_LIST, config.tracks.B_LIST_COUNT);
-    const newFaves2025Tracks = await getRandomTracks(config.playlists.FAVES_2025, config.tracks.FAVES_2025_COUNT);
     
+    console.log(`New 2025 Favorites tracks to add: ${newFaves2025Tracks.length}`);
     console.log(`New A-List tracks to add: ${newAListTracks.length}`);
     console.log(`New B-List tracks to add: ${newBListTracks.length}`);
-    console.log(`New 2025 Favorites tracks to add: ${newFaves2025Tracks.length}`);
     
-    // Step 4: Add new tracks to daily playlist
-    const tracksToAdd = [...newAListTracks, ...newBListTracks, ...newFaves2025Tracks];
+    // Step 6: Add new tracks to daily playlist in the correct order
+    const tracksToAdd = [
+      ...newFaves2025Tracks,  // 2025 Favorites first
+      ...newAListTracks,      // A-List second
+      ...newBListTracks       // B-List last
+    ];
+    
     if (tracksToAdd.length > 0) {
       await addTracksToPlaylist(config.playlists.DAILY, tracksToAdd);
       console.log(`Added ${tracksToAdd.length} random tracks to daily playlist`);
