@@ -2,7 +2,7 @@
 // This script will:
 // 1. Clear the daily playlist
 // 2. Add everyday tracks in reverse order (newest first)
-// 3. Add random tracks from 2025 Favorites, A-List, and B-List
+// 3. Add random tracks from 2025 Favorites, A-List, B-List and Season
 
 const SpotifyWebApi = require('spotify-web-api-node');
 
@@ -16,11 +16,13 @@ const config = {
     EVERYDAY: process.env.EVERYDAY_PLAYLIST_ID,
     A_LIST: process.env.A_LIST_PLAYLIST_ID,
     B_LIST: process.env.B_LIST_PLAYLIST_ID,
+    SEASON: process.env.SEASON_PLAYLIST_ID,
     FAVES_2025: process.env.FAVES_2025_PLAYLIST_ID
   },
   tracks: {
     A_LIST_COUNT: parseInt(process.env.A_LIST_COUNT || '10'),
     B_LIST_COUNT: parseInt(process.env.B_LIST_COUNT || '5'),
+    SEASON_COUNT: parseInt(process.env.SEASON_COUNT || '5'),
     FAVES_2025_COUNT: parseInt(process.env.FAVES_2025_COUNT || '10')
   }
 };
@@ -164,6 +166,7 @@ async function refreshDailyPlaylist() {
     console.log(`- Everyday: ${config.playlists.EVERYDAY}`);
     console.log(`- A-List: ${config.playlists.A_LIST}`);
     console.log(`- B-List: ${config.playlists.B_LIST}`);
+    console.log(`- Season: ${config.playlists.SEASON}`);
     console.log(`- 2025 Favorites: ${config.playlists.FAVES_2025}`);
     
     // Step 1: Clear the daily playlist completely
@@ -189,16 +192,19 @@ async function refreshDailyPlaylist() {
     const newFaves2025Tracks = await getRandomTracks(config.playlists.FAVES_2025, config.tracks.FAVES_2025_COUNT);
     const newAListTracks = await getRandomTracks(config.playlists.A_LIST, config.tracks.A_LIST_COUNT);
     const newBListTracks = await getRandomTracks(config.playlists.B_LIST, config.tracks.B_LIST_COUNT);
+    const newSeasonTracks = await getRandomTracks(config.playlists.B_LIST, config.tracks.SEASON_COUNT);
     
     console.log(`New 2025 Favorites tracks to add: ${newFaves2025Tracks.length}`);
     console.log(`New A-List tracks to add: ${newAListTracks.length}`);
     console.log(`New B-List tracks to add: ${newBListTracks.length}`);
+    console.log(`New Season tracks to add: ${newSeasonTracks.length}`);
     
     // Step 6: Add new tracks to daily playlist in the correct order
     const tracksToAdd = [
       ...newFaves2025Tracks,  // 2025 Favorites first
       ...newAListTracks,      // A-List second
-      ...newBListTracks       // B-List last
+      ...newBListTracks,       // B-List third
+      ...newSeasonTracks       //Season last
     ];
     
     if (tracksToAdd.length > 0) {
