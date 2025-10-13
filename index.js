@@ -192,7 +192,7 @@ async function refreshDailyPlaylist() {
     const newFaves2025Tracks = await getRandomTracks(config.playlists.FAVES_2025, config.tracks.FAVES_2025_COUNT);
     const newAListTracks = await getRandomTracks(config.playlists.A_LIST, config.tracks.A_LIST_COUNT);
     const newBListTracks = await getRandomTracks(config.playlists.B_LIST, config.tracks.B_LIST_COUNT);
-    const newSeasonTracks = await getRandomTracks(config.playlists.B_LIST, config.tracks.SEASON_COUNT);
+    const newSeasonTracks = await getRandomTracks(config.playlists.SEASON, config.tracks.SEASON_COUNT);
     
     console.log(`New 2025 Favorites tracks to add: ${newFaves2025Tracks.length}`);
     console.log(`New A-List tracks to add: ${newAListTracks.length}`);
