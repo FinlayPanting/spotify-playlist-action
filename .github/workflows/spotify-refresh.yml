@@ -35,6 +35,8 @@ jobs:
         A_LIST_PLAYLIST_ID: ${{ secrets.A_LIST_PLAYLIST_ID }}
         B_LIST_PLAYLIST_ID: ${{ secrets.B_LIST_PLAYLIST_ID }}
         FAVES_2025_PLAYLIST_ID: ${{ secrets.FAVES_2025_PLAYLIST_ID }}
+        SEASON_PLAYLIST_ID: ${{ secrets.SEASON_PLAYLIST_ID }}
         A_LIST_COUNT: ${{ secrets.A_LIST_COUNT || '10' }}
         B_LIST_COUNT: ${{ secrets.B_LIST_COUNT || '5' }}
         FAVES_2025_COUNT: ${{ secrets.FAVES_2025_COUNT || '10' }}
+        SEASON_COUNT: ${{ secrets.SEASON_COUNT || '10' }}
