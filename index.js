@@ -190,21 +190,21 @@ async function refreshDailyPlaylist() {
     
     // Step 5: Get new random tracks from each source playlist
     const newFaves2025Tracks = await getRandomTracks(config.playlists.FAVES_2025, config.tracks.FAVES_2025_COUNT);
+    const newSeasonTracks = await getRandomTracks(config.playlists.SEASON, config.tracks.SEASON_COUNT);
     const newAListTracks = await getRandomTracks(config.playlists.A_LIST, config.tracks.A_LIST_COUNT);
     const newBListTracks = await getRandomTracks(config.playlists.B_LIST, config.tracks.B_LIST_COUNT);
-    const newSeasonTracks = await getRandomTracks(config.playlists.SEASON, config.tracks.SEASON_COUNT);
     
     console.log(`New 2025 Favorites tracks to add: ${newFaves2025Tracks.length}`);
+    console.log(`New Season tracks to add: ${newSeasonTracks.length}`);
     console.log(`New A-List tracks to add: ${newAListTracks.length}`);
     console.log(`New B-List tracks to add: ${newBListTracks.length}`);
-    console.log(`New Season tracks to add: ${newSeasonTracks.length}`);
     
     // Step 6: Add new tracks to daily playlist in the correct order
     const tracksToAdd = [
       ...newFaves2025Tracks,  // 2025 Favorites first
-      ...newAListTracks,      // A-List second
-      ...newBListTracks,       // B-List third
-      ...newSeasonTracks       //Season last
+      ...newSeasonTracks,       //Season second
+      ...newAListTracks,      // A-List third
+      ...newBListTracks       // B-List last
     ];
     
     if (tracksToAdd.length > 0) {
