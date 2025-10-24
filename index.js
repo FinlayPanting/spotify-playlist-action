@@ -1,8 +1,8 @@
-// Spotify Daily Playlist Rotator (Script Version)
+// Spotify Daily Playlist Rotator
 // This script will:
 // 1. Clear the daily playlist
 // 2. Add everyday tracks in reverse order (newest first)
-// 3. Add random tracks from 2025 Favorites, A-List, B-List and Season
+// 3. Add random tracks from 2025 Favorites, A-List, B-List and Seasonal
 
 const SpotifyWebApi = require('spotify-web-api-node');
 
@@ -86,7 +86,7 @@ async function getRandomTracks(playlistId, count) {
     // Get all tracks
     const allTracks = await getAllPlaylistTracks(playlistId);
     
-// Proper Fisher-Yates shuffle
+// Fisher-Yates shuffle
     const shuffled = [...allTracks]; // Create a copy
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
