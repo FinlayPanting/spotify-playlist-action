@@ -16,7 +16,7 @@ This GitHub Action rebuilds a daily playlist at 3:00 AM UTC by:
 * Randomly selecting tracks from my Year Favourites (new songs -> favourites), A-List, and B-List playlists (favourites from previous years)
 * Clearing and refreshing the playlist completely each day
 
-Stack: Python, Spotify Web API, GitHub Actions
+Stack: Javascript, Spotify Web API, GitHub Actions
 
 ## How It Works
 
