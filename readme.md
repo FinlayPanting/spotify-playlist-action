@@ -58,8 +58,8 @@ This GitHub Action automatically refreshes a Spotify playlist by:
    
    **Track count secrets:**
    - `A_LIST_COUNT`: Number of tracks to pull from A-List (default: 10)
-   - `B_LIST_COUNT`: Number of tracks to pull from B-List (default: 5)
-   - `FAVES_2025_COUNT`: Number of tracks to pull from 2025 Favorites (default: 10)
+   - `B_LIST_COUNT`: Number of tracks to pull from B-List (default: 15)
+   - `FAVES_2025_COUNT`: Number of tracks to pull from 2025 Favorites (default: 20)
    - `SEASONAL_COUNT`: Number of tracks to pull from seasonal (default: 5)
 
 3. **Trigger the Action**
