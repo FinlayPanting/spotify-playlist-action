@@ -77,8 +77,8 @@ To change how many tracks are pulled from each playlist:
 1. Go to Settings > Secrets and variables > Actions
 2. Add or update the secrets:
    - `A_LIST_COUNT` (default: 10 if not specified)
-   - `B_LIST_COUNT` (default: 5 if not specified)
-   - `FAVES_2025_COUNT` (default: 10 if not specified)
+   - `B_LIST_COUNT` (default: 15 if not specified)
+   - `FAVES_2025_COUNT` (default: 20 if not specified)
    - `SEASONAL_COUNT` (default: 5 if not specified)
 
 ## Monitoring
