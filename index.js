@@ -21,9 +21,9 @@ const config = {
   },
   tracks: {
     A_LIST_COUNT: parseInt(process.env.A_LIST_COUNT || '10'),
-    B_LIST_COUNT: parseInt(process.env.B_LIST_COUNT || '5'),
+    B_LIST_COUNT: parseInt(process.env.B_LIST_COUNT || '15'),
     SEASON_COUNT: parseInt(process.env.SEASON_COUNT || '5'),
-    FAVES_2025_COUNT: parseInt(process.env.FAVES_2025_COUNT || '10')
+    FAVES_2025_COUNT: parseInt(process.env.FAVES_2025_COUNT || '20')
   }
 };
 
