@@ -1,9 +1,9 @@
 name: Spotify Playlist Refresh
 
 on:
-  # Run at 3 AM UTC every day
+  # Run at 2 AM UTC every day
   schedule:
-    - cron: '0 3 * * *'
+    - cron: '0 2 * * *'
   
   # Manual trigger (from the GitHub UI)
   workflow_dispatch:
