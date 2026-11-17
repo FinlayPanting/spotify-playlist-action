@@ -116,6 +116,23 @@ function rankSongs(all, stats) {
   return { list, used };
 }
 
+// Fallback when stats.fm is unreachable: reuse the play counts saved in last week's ranking
+function lastWeeksPlays() {
+  if (!fs.existsSync(RANKING_FILE)) return null;
+  const lines = fs.readFileSync(RANKING_FILE, 'utf8').trim().split('\n').slice(1);
+  const bySpotifyId = new Map();
+  for (const line of lines) {
+    // last four columns are always: spotify_popularity, plays, statsfm_rank, track_uri
+    const cols = line.split(',');
+    const uri = cols[cols.length - 1];
+    const plays = cols[cols.length - 3];
+    if (plays !== '') bySpotifyId.set(uri.split(':')[2], { plays: Number(plays), position: null });
+  }
+  if (!bySpotifyId.size) return null;
+  console.log(`Using last week's play counts for ${bySpotifyId.size} songs`);
+  return { bySpotifyId, byName: new Map(), hasCounts: true };
+}
+
 function csvCell(v) {
   const s = String(v ?? '');
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -163,7 +180,7 @@ function buildReport(date, counts, dupes, added) {
   console.log(`Suspected duplicates: ${dupes.length}`);
 
   // One copy of each song, ranked best to worst
-  const stats = await getPlayCounts(STATSFM_USER, STATSFM_RANGE, songKey);
+  const stats = (await getPlayCounts(STATSFM_USER, STATSFM_RANGE, songKey)) || (STATSFM_USER ? lastWeeksPlays() : null);
   const { list: ranked } = rankSongs(all, stats);
   const withPop = ranked.filter(s => s.popularity !== null).length;
   if (stats) console.log(`stats.fm plays matched for ${ranked.filter(s => s.plays != null || s.statsPosition != null).length}/${ranked.length} songs`);
