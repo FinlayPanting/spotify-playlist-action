@@ -44,7 +44,6 @@ jobs:
         FAVES_2025_PLAYLIST_ID: ${{ secrets.FAVES_2025_PLAYLIST_ID }}
         WEEKLY_PLAYLIST_ID: 6pQpdPKcPUv2zwIYleSeNz
         STATSFM_USER: '1129577082'
-        STATSFM_RANGE: lifetime
         DATA_DIR: data
 
     - name: Save ranking and duplicate report to private repo

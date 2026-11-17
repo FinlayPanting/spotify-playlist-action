@@ -5,7 +5,8 @@
 //
 // "Best" is a score out of 100 mixing three signals (weights below):
 //   - list:       which list the song is on (best list wins if it's on several)
-//   - plays:      how much you've played it, from stats.fm (skipped if unavailable)
+//   - plays:      how much you've played it, from stats.fm, recent plays weighted higher
+//                 (blend of last 4 weeks / 6 months / lifetime; skipped if unavailable)
 //   - popularity: Spotify's general popularity score
 // Each signal is 0-1; missing signals are left out and the rest re-weighted.
 //
@@ -21,7 +22,12 @@ const { getPlayCounts } = require('./lib/statsfm');
 const WEIGHTS = { list: 0.4, plays: 0.4, popularity: 0.2 };
 const LIST_VALUE = { 'A-List': 1.0, 'Year Faves': 1.0, 'B-List': 0.4 };
 const STATSFM_USER = process.env.STATSFM_USER || '';
-const STATSFM_RANGE = process.env.STATSFM_RANGE || 'lifetime';   // or 'months' (6 months), 'weeks' (4 weeks)
+// How the plays score is blended across stats.fm periods (recent listening counts for more)
+const PLAY_PERIODS = [
+  { range: 'weeks', label: '4w', weight: 0.25 },        // last 4 weeks
+  { range: 'months', label: '6m', weight: 0.40 },       // last 6 months
+  { range: 'lifetime', label: 'lifetime', weight: 0.35 }
+];
 
 const SOURCES = [
   { name: 'A-List', id: process.env.A_LIST_PLAYLIST_ID },
@@ -65,7 +71,7 @@ function percentiles(songs, getValue) {
   return s => { const v = getValue(s); return v === null || v === undefined ? 0 : pct(v); };
 }
 
-function rankSongs(all, stats) {
+function rankSongs(all, statsByPeriod) {
   // Merge copies of the same song across lists
   const songs = new Map();
   for (const t of all) {
@@ -88,23 +94,27 @@ function rankSongs(all, stats) {
   }
   const list = [...songs.values()];
 
-  // Attach stats.fm data
-  if (stats) {
+  // Attach stats.fm data for each period
+  const periodScores = [];
+  for (const p of PLAY_PERIODS) {
+    const stats = statsByPeriod[p.label];
+    if (!stats) continue;
     for (const s of list) {
+      s.plays = s.plays || {};
       const e = s.uris.map(u => stats.bySpotifyId.get(u.split(':')[2])).find(Boolean) || stats.byName.get(s.key);
-      s.plays = e ? e.plays : null;
-      s.statsPosition = e ? e.position : null;
+      // With Plus: real play counts. Without: stats.fm rank (position 1 = best)
+      s.plays[p.label] = !e ? null : stats.hasCounts ? e.plays : (e.position == null ? null : -e.position);
     }
+    const pct = percentiles(list, s => s.plays[p.label]);
+    if (pct) periodScores.push({ weight: p.weight, pct });
   }
 
   const signals = { list: s => s.listValue };
   const pop = percentiles(list, s => s.popularity);
   if (pop) signals.popularity = pop;
-  if (stats) {
-    // With Plus: real play counts. Without: stats.fm rank (position 1 = best)
-    const plays = stats.hasCounts ? percentiles(list, s => s.plays)
-                                  : percentiles(list, s => s.statsPosition === null ? null : -s.statsPosition);
-    if (plays) signals.plays = plays;
+  if (periodScores.length) {
+    const wSum = periodScores.reduce((a, p) => a + p.weight, 0);
+    signals.plays = s => periodScores.reduce((a, p) => a + p.weight * p.pct(s), 0) / wSum;
   }
   const used = Object.keys(signals);
   const totalW = used.reduce((a, k) => a + WEIGHTS[k], 0);
@@ -118,20 +128,25 @@ function rankSongs(all, stats) {
   return { list, used };
 }
 
-// Fallback when stats.fm is unreachable: reuse the play counts saved in last week's ranking
-function lastWeeksPlays() {
+// Fallback when stats.fm is unreachable: reuse that period's play counts from last week's ranking.
+// The columns after 'artists' never contain commas, so they can be read counting from the end.
+function lastWeeksPlays(label) {
   if (!fs.existsSync(RANKING_FILE)) return null;
-  const lines = fs.readFileSync(RANKING_FILE, 'utf8').trim().split('\n').slice(1);
+  const [header, ...lines] = fs.readFileSync(RANKING_FILE, 'utf8').trim().split('\n');
+  const cols = header.split(',');
+  let idx = cols.indexOf(`plays_${label}`);
+  if (idx < 0 && label === 'lifetime') idx = cols.indexOf('plays');   // older file format
+  if (idx < 0) return null;
+  const fromEnd = cols.length - idx;
   const bySpotifyId = new Map();
   for (const line of lines) {
-    // last four columns are always: spotify_popularity, plays, statsfm_rank, track_uri
-    const cols = line.split(',');
-    const uri = cols[cols.length - 1];
-    const plays = cols[cols.length - 3];
-    if (plays !== '') bySpotifyId.set(uri.split(':')[2], { plays: Number(plays), position: null });
+    const c = line.split(',');
+    const uri = c[c.length - 1];
+    const plays = c[c.length - fromEnd];
+    if (plays !== '' && plays !== undefined) bySpotifyId.set(uri.split(':')[2], { plays: Number(plays), position: null });
   }
   if (!bySpotifyId.size) return null;
-  console.log(`Using last week's play counts for ${bySpotifyId.size} songs`);
+  console.log(`stats.fm ${label}: using last week's play counts for ${bySpotifyId.size} songs`);
   return { bySpotifyId, byName: new Map(), hasCounts: true };
 }
 
@@ -141,9 +156,10 @@ function csvCell(v) {
 }
 
 function writeRanking(list) {
-  const rows = [['rank', 'score', 'song', 'artists', 'lists', 'spotify_popularity', 'plays', 'statsfm_rank', 'track_uri']];
+  const rows = [['rank', 'score', 'song', 'artists', 'lists', 'spotify_popularity',
+    ...PLAY_PERIODS.map(p => `plays_${p.label}`), 'track_uri']];
   list.forEach((s, i) => rows.push([i + 1, s.score.toFixed(1), s.name, s.artists.join('; '), s.lists.join(' + '),
-    s.popularity ?? '', s.plays ?? '', s.statsPosition ?? '', s.uri]));
+    s.popularity ?? '', ...PLAY_PERIODS.map(p => (s.plays && s.plays[p.label]) ?? ''), s.uri]));
   fs.writeFileSync(RANKING_FILE, rows.map(r => r.map(csvCell).join(',')).join('\n') + '\n');
 }
 
@@ -182,10 +198,19 @@ function buildReport(date, counts, dupes, added) {
   console.log(`Suspected duplicates: ${dupes.length}`);
 
   // One copy of each song, ranked best to worst
-  const stats = (await getPlayCounts(STATSFM_USER, STATSFM_RANGE, songKey)) || (STATSFM_USER ? lastWeeksPlays() : null);
-  const { list: ranked } = rankSongs(all, stats);
+  const statsByPeriod = {};
+  if (STATSFM_USER) {
+    for (const p of PLAY_PERIODS) {
+      statsByPeriod[p.label] = (await getPlayCounts(STATSFM_USER, p.range, songKey)) || lastWeeksPlays(p.label);
+    }
+  }
+  const { list: ranked } = rankSongs(all, statsByPeriod);
   const withPop = ranked.filter(s => s.popularity !== null).length;
-  if (stats) console.log(`stats.fm plays matched for ${ranked.filter(s => s.plays != null || s.statsPosition != null).length}/${ranked.length} songs`);
+  for (const p of PLAY_PERIODS) {
+    if (statsByPeriod[p.label]) {
+      console.log(`stats.fm ${p.label}: plays matched for ${ranked.filter(s => s.plays && s.plays[p.label] != null).length}/${ranked.length} songs`);
+    }
+  }
   console.log(`Spotify popularity available for ${withPop}/${ranked.length} songs`);
   const uris = ranked.map(s => s.uri);
 
