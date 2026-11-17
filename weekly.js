@@ -166,6 +166,7 @@ function buildReport(date, counts, dupes, added) {
   const stats = await getPlayCounts(STATSFM_USER, STATSFM_RANGE, songKey);
   const { list: ranked } = rankSongs(all, stats);
   const withPop = ranked.filter(s => s.popularity !== null).length;
+  if (stats) console.log(`stats.fm plays matched for ${ranked.filter(s => s.plays != null || s.statsPosition != null).length}/${ranked.length} songs`);
   console.log(`Spotify popularity available for ${withPop}/${ranked.length} songs`);
   const uris = ranked.map(s => s.uri);
 
