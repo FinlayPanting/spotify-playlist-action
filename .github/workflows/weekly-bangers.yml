@@ -1,0 +1,64 @@
+name: Weekly Bangers Playlist
+
+on:
+  # Sundays 17:41 UTC = 18:41 in Salzburg (19:41 in summer)
+  schedule:
+    - cron: '41 17 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # commit history/duplicates.md
+  issues: write     # open/close the duplicate-check issue
+
+jobs:
+  weekly-refresh:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install dependencies
+      run: npm install spotify-web-api-node
+
+    - name: Rebuild combined playlist and check duplicates
+      id: weekly
+      run: node weekly.js
+      env:
+        SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+        SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+        SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
+        A_LIST_PLAYLIST_ID: ${{ secrets.A_LIST_PLAYLIST_ID }}
+        B_LIST_PLAYLIST_ID: ${{ secrets.B_LIST_PLAYLIST_ID }}
+        FAVES_2025_PLAYLIST_ID: ${{ secrets.FAVES_2025_PLAYLIST_ID }}
+        WEEKLY_PLAYLIST_ID: 6pQpdPKcPUv2zwIYleSeNz
+
+    # One standing issue: opened (or updated) when duplicates exist, closed when the lists are clean.
+    - name: Update duplicate-check issue
+      env:
+        GH_TOKEN: ${{ github.token }}
+        DUPES: ${{ steps.weekly.outputs.duplicates }}
+      run: |
+        TITLE="Duplicate songs found in A-List / B-List / Year Faves"
+        NUM=$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number')
+        if [ "${DUPES:-0}" -gt 0 ]; then
+          if [ -n "$NUM" ]; then
+            gh issue comment "$NUM" --body-file history/duplicates.md
+          else
+            gh issue create --title "$TITLE" --body-file history/duplicates.md
+          fi
+        elif [ -n "$NUM" ]; then
+          gh issue close "$NUM" --comment "All clear this week — no suspected duplicates. ✅"
+        fi
+
+    - name: Commit duplicate report
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+        git add history/duplicates.md
+        git diff --cached --quiet && exit 0
+        git commit -m "Weekly duplicate check $(TZ=Europe/Vienna date +%F)"
+        git pull --rebase
+        git push

@@ -92,3 +92,9 @@ To change how many tracks are pulled from each playlist:
 ## Monitoring
 
 You can check the results of each run in the "Actions" tab. Each run will show logs with details about tracks added.
+
+## Weekly Bangers playlist
+
+A second workflow (`weekly-bangers.yml`, Sundays 18:41 Salzburg time) rebuilds a big combined playlist from A-List, B-List and Year Faves, shuffled into a random order with each song only once.
+
+It also checks for suspected duplicates (same song name and artist, ignoring case and punctuation) within and across those three lists. The result is saved to `history/duplicates.md`, shown on the run's summary page, and posted to a GitHub issue when duplicates exist; the issue closes itself once the lists are clean.
