@@ -3,8 +3,17 @@
 // 1. Clear the daily playlist
 // 2. Add everyday tracks in reverse order (newest first)
 // 3. Add random tracks from 2025 Favorites, A-List, B-List and Seasonal
+// 4. Log the random selections to history/selections.csv for trend analysis
+//
+// The Seasonal count can be overridden by date via seasonal-schedule.json
+// (e.g. a Christmas ramp that adds one more track each day).
 
+const fs = require('fs');
+const path = require('path');
 const SpotifyWebApi = require('spotify-web-api-node');
+
+const HISTORY_FILE = path.join(__dirname, 'history', 'selections.csv');
+const SCHEDULE_FILE = path.join(__dirname, 'seasonal-schedule.json');
 
 // Configuration (populated from GitHub Secrets)
 const config = {
@@ -61,10 +70,17 @@ async function getAllPlaylistTracks(playlistId) {
       
       console.log(`Got batch of ${response.body.items.length} tracks (offset ${offset}/${total})`);
       
-      // Filter out any null tracks and add to our collection
+      // Filter out any null tracks and keep the details we want to log
       const validTracks = response.body.items
-        .filter(item => item && item.track)
-        .map(item => item.track.uri);
+        .map((item, i) => ({ item, position: offset + i + 1 }))
+        .filter(({ item }) => item && item.track && item.track.uri)
+        .map(({ item, position }) => ({
+          uri: item.track.uri,
+          name: item.track.name || '',
+          artists: (item.track.artists || []).map(a => a.name).join('; '),
+          album: (item.track.album && item.track.album.name) || '',
+          position
+        }));
       
       allTracks.push(...validTracks);
       offset += limit;
@@ -94,7 +110,9 @@ async function getRandomTracks(playlistId, count) {
     }
     
     // Return the number of tracks we need (or all if we have fewer)
-    const selectedTracks = shuffled.slice(0, Math.min(count, shuffled.length));
+    const selectedTracks = shuffled
+      .slice(0, Math.min(count, shuffled.length))
+      .map(t => ({ ...t, sourceSize: allTracks.length }));
     console.log(`Selected ${selectedTracks.length} random tracks`);
     return selectedTracks;
   } catch (error) {
@@ -144,6 +162,84 @@ async function addTracksToPlaylist(playlistId, trackUris) {
   }
 }
 
+// ---------- Seasonal schedule ----------
+
+// Today's date (YYYY-MM-DD) in the given time zone. RUN_DATE overrides it for testing.
+function todayIn(timeZone) {
+  if (process.env.RUN_DATE) return process.env.RUN_DATE;
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone, year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(new Date());
+}
+
+function dayNumber(ymd) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return Date.UTC(y, m - 1, d) / 86400000;
+}
+
+// Returns { count, reason } for the Seasonal playlist today
+function getSeasonCount(defaultCount) {
+  let schedule;
+  try {
+    schedule = JSON.parse(fs.readFileSync(SCHEDULE_FILE, 'utf8'));
+  } catch (e) {
+    return { count: defaultCount, reason: 'default (no schedule file)', date: todayIn('Europe/Vienna') };
+  }
+
+  const tz = schedule.timezone || 'Europe/Vienna';
+  const today = todayIn(tz);
+  const year = Number(today.slice(0, 4));
+  const todayN = dayNumber(today);
+
+  for (const ramp of schedule.ramps || []) {
+    // Ramps repeat yearly; handle ranges that cross New Year (e.g. 12-20 to 01-06)
+    const wraps = ramp.end < ramp.start;
+    let startYear = year;
+    if (wraps && today.slice(5) <= ramp.end) startYear = year - 1;
+    const startN = dayNumber(`${startYear}-${ramp.start}`);
+    const endN = dayNumber(`${wraps ? startYear + 1 : startYear}-${ramp.end}`);
+
+    if (todayN >= startN && todayN <= endN) {
+      const days = todayN - startN;
+      const raw = (ramp.startCount ?? 1) + (ramp.stepPerDay ?? 1) * days;
+      const count = Math.max(0, Math.min(raw, ramp.maxCount ?? raw));
+      return { count, reason: `${ramp.name} ramp, day ${days + 1}`, date: today };
+    }
+  }
+  return { count: defaultCount, reason: 'default (SEASON_COUNT)', date: today };
+}
+
+// ---------- Selection history ----------
+
+const CSV_HEADER = [
+  'date', 'run_time_utc', 'source', 'slot', 'track_name', 'artists', 'album',
+  'track_uri', 'source_position', 'source_size', 'count_requested', 'note'
+];
+
+function csvCell(value) {
+  const s = String(value ?? '');
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function logSelections(date, groups) {
+  const runTime = new Date().toISOString();
+  const rows = [];
+  for (const g of groups) {
+    g.tracks.forEach((t, i) => {
+      rows.push([
+        date, runTime, g.source, i + 1, t.name, t.artists, t.album,
+        t.uri, t.position, t.sourceSize, g.requested, g.note || ''
+      ].map(csvCell).join(','));
+    });
+  }
+
+  fs.mkdirSync(path.dirname(HISTORY_FILE), { recursive: true });
+  const isNew = !fs.existsSync(HISTORY_FILE);
+  const text = (isNew ? CSV_HEADER.join(',') + '\n' : '') + rows.map(r => r + '\n').join('');
+  fs.appendFileSync(HISTORY_FILE, text);
+  console.log(`Logged ${rows.length} selections to ${path.relative(__dirname, HISTORY_FILE)}`);
+}
+
 // Main function to refresh playlist
 async function refreshDailyPlaylist() {
   console.log('Starting daily playlist refresh...');
@@ -179,7 +275,7 @@ async function refreshDailyPlaylist() {
     console.log(`Getting ${everydayTracks.length} tracks from Everyday playlist`);
     
     // Step 3: Reverse the everyday tracks order so newest appear at the top
-    const reversedEverydayTracks = [...everydayTracks].reverse();
+    const reversedEverydayTracks = everydayTracks.map(t => t.uri).reverse();
     console.log('Reversed Everyday tracks so newest tracks will appear at top');
     
     // Step 4: Add the reversed everyday tracks
@@ -189,8 +285,11 @@ async function refreshDailyPlaylist() {
     }
     
     // Step 5: Get new random tracks from each source playlist
+    const season = getSeasonCount(config.tracks.SEASON_COUNT);
+    console.log(`Season count for ${season.date}: ${season.count} (${season.reason})`);
+
     const newFaves2025Tracks = await getRandomTracks(config.playlists.FAVES_2025, config.tracks.FAVES_2025_COUNT);
-    const newSeasonTracks = await getRandomTracks(config.playlists.SEASON, config.tracks.SEASON_COUNT);
+    const newSeasonTracks = await getRandomTracks(config.playlists.SEASON, season.count);
     const newAListTracks = await getRandomTracks(config.playlists.A_LIST, config.tracks.A_LIST_COUNT);
     const newBListTracks = await getRandomTracks(config.playlists.B_LIST, config.tracks.B_LIST_COUNT);
     
@@ -205,11 +304,23 @@ async function refreshDailyPlaylist() {
       ...newSeasonTracks,       //Season second
       ...newAListTracks,      // A-List third
       ...newBListTracks       // B-List last
-    ];
+    ].map(t => t.uri);
     
     if (tracksToAdd.length > 0) {
       await addTracksToPlaylist(config.playlists.DAILY, tracksToAdd);
       console.log(`Added ${tracksToAdd.length} random tracks to daily playlist`);
+    }
+
+    // Step 7: Record today's random picks (a logging failure never fails the run)
+    try {
+      logSelections(season.date, [
+        { source: 'Year Faves', tracks: newFaves2025Tracks, requested: config.tracks.FAVES_2025_COUNT },
+        { source: 'Seasonal', tracks: newSeasonTracks, requested: season.count, note: season.reason },
+        { source: 'A-List', tracks: newAListTracks, requested: config.tracks.A_LIST_COUNT },
+        { source: 'B-List', tracks: newBListTracks, requested: config.tracks.B_LIST_COUNT }
+      ]);
+    } catch (e) {
+      console.error('Could not write selection history:', e.message);
     }
     
     console.log('Daily playlist successfully refreshed!');

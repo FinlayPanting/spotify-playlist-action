@@ -10,7 +10,7 @@ Due to personal projects that needed me to keep up to date with the latest music
 
 ## The Result
 
-This GitHub Action rebuilds a daily playlist at 3:00 AM UTC by:
+This GitHub Action rebuilds a daily playlist at about 1:00 AM (Salzburg time) by:
 
 * Adding all tracks from my "Everyday" playlist (new songs I like)
 * Randomly selecting tracks from my Year Favourites (new songs -> favourites), A-List, and B-List playlists (favourites from previous years)
@@ -29,11 +29,19 @@ This GitHub Action automatically refreshes a Spotify playlist by:
    - Random tracks from B-List playlist
    - Random tracks from Seasonal playlist
 
-* The script runs automatically every day at 3:00 AM UTC
+* The script runs automatically every day at 00:03 UTC (01:03 in Salzburg, 02:03 in summer)
 * It uses the GitHub Actions scheduler for reliable execution
 * All sensitive information is stored in GitHub Secrets
 * Track counts can be easily adjusted through GitHub Secrets
 * The Everyday playlist tracks are added in reverse order so your newest additions appear at the top
+
+## Selection history
+
+Every run appends the day's random picks (Year Faves, Seasonal, A-List, B-List) to `history/selections.csv` and commits it back to the repo. Columns: date, run time, source playlist, slot, track, artists, album, track URI, the track's position in its source playlist, the source playlist's size, how many were requested, and a note (e.g. which seasonal ramp was active). It opens directly in Excel or Google Sheets.
+
+## Seasonal ramps
+
+`seasonal-schedule.json` can override how many Seasonal tracks are added on certain dates, repeating every year. The Christmas ramp starts at 1 track on 25 November and adds one more each day, capped at 30 (reached on 24 December and held on the 25th). Outside a ramp, the `SEASON_COUNT` secret applies. Add more entries to `ramps` for other periods.
 
 ## Setup Instructions
 

@@ -1,0 +1,14 @@
+{
+  "_comment": "Date-based overrides for how many Seasonal tracks to add. Dates are MM-DD and repeat every year (Europe/Vienna time). Outside any ramp, the SEASON_COUNT secret is used. count = startCount + stepPerDay * (days since start), capped at maxCount.",
+  "timezone": "Europe/Vienna",
+  "ramps": [
+    {
+      "name": "Christmas",
+      "start": "11-25",
+      "end": "12-25",
+      "startCount": 1,
+      "stepPerDay": 1,
+      "maxCount": 30
+    }
+  ]
+}
