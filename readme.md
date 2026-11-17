@@ -95,6 +95,6 @@ You can check the results of each run in the "Actions" tab. Each run will show l
 
 ## Weekly Bangers playlist
 
-A second workflow (`weekly-bangers.yml`, Sundays 18:41 Salzburg time) rebuilds a big combined playlist from A-List, B-List and Year Faves, shuffled into a random order with each song only once.
+A second workflow (`weekly-bangers.yml`, Sundays 18:41 Salzburg time) rebuilds a big combined playlist from A-List, B-List and Year Faves, ordered best to worst with each song only once. Each song gets a score out of 100 from three signals: which list it's on (A 1.0, Year Faves 0.7, B 0.4; 40%), lifetime plays from stats.fm (40%) and Spotify popularity (20%). Missing signals are skipped and the rest re-weighted. Weights live at the top of `weekly.js`; the full ranking is saved to `history/bangers-ranking.csv`.
 
 It also checks for suspected duplicates (same song name and artist, ignoring case and punctuation) within and across those three lists. The result is saved to `history/duplicates.md`, shown on the run's summary page, and posted to a GitHub issue when duplicates exist; the issue closes itself once the lists are clean.

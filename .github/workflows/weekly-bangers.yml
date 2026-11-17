@@ -23,7 +23,7 @@ jobs:
     - name: Install dependencies
       run: npm install spotify-web-api-node
 
-    - name: Rebuild combined playlist and check duplicates
+    - name: Rebuild combined playlist (best to worst) and check duplicates
       id: weekly
       run: node weekly.js
       env:
@@ -34,6 +34,8 @@ jobs:
         B_LIST_PLAYLIST_ID: ${{ secrets.B_LIST_PLAYLIST_ID }}
         FAVES_2025_PLAYLIST_ID: ${{ secrets.FAVES_2025_PLAYLIST_ID }}
         WEEKLY_PLAYLIST_ID: 6pQpdPKcPUv2zwIYleSeNz
+        STATSFM_USER: '1129577082'
+        STATSFM_RANGE: lifetime
 
     # One standing issue: opened (or updated) when duplicates exist, closed when the lists are clean.
     - name: Update duplicate-check issue
@@ -57,7 +59,7 @@ jobs:
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
-        git add history/duplicates.md
+        git add history/duplicates.md history/bangers-ranking.csv
         git diff --cached --quiet && exit 0
         git commit -m "Weekly duplicate check $(TZ=Europe/Vienna date +%F)"
         git pull --rebase
