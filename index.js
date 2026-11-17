@@ -59,7 +59,8 @@ async function getAllPlaylistTracks(playlistId) {
     while (offset < total) {
       const response = await spotifyApi.getPlaylistTracks(playlistId, {
         limit: limit,
-        offset: offset
+        offset: offset,
+        fields: 'total,items(track(uri,name,artists(name),album(name)))'   // only what we use
       });
       
       // Update total on first request

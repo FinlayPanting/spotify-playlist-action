@@ -18,7 +18,7 @@ const { getPlayCounts } = require('./lib/statsfm');
 
 // ---- Tune the ranking here ----
 const WEIGHTS = { list: 0.4, plays: 0.4, popularity: 0.2 };
-const LIST_VALUE = { 'A-List': 1.0, 'Year Faves': 0.7, 'B-List': 0.4 };
+const LIST_VALUE = { 'A-List': 1.0, 'Year Faves': 1.0, 'B-List': 0.4 };
 const STATSFM_USER = process.env.STATSFM_USER || '';
 const STATSFM_RANGE = process.env.STATSFM_RANGE || 'lifetime';   // or 'months' (6 months), 'weeks' (4 weeks)
 
@@ -110,9 +110,9 @@ function rankSongs(all, stats) {
 
   for (const s of list) {
     s.score = 100 * used.reduce((a, k) => a + WEIGHTS[k] * signals[k](s), 0) / totalW;
-    s.tiebreak = Math.random();
+    s.tiebreak = s.key;
   }
-  list.sort((a, b) => b.score - a.score || a.tiebreak - b.tiebreak);
+  list.sort((a, b) => b.score - a.score || a.tiebreak.localeCompare(b.tiebreak));
   return { list, used };
 }
 
@@ -170,8 +170,15 @@ function buildReport(date, counts, dupes, added) {
   console.log(`Spotify popularity available for ${withPop}/${ranked.length} songs`);
   const uris = ranked.map(s => s.uri);
 
-  await replacePlaylist(api, TARGET, uris);
-  console.log(`Combined playlist rebuilt with ${uris.length} songs, best to worst`);
+  const previous = fs.existsSync(RANKING_FILE)
+    ? fs.readFileSync(RANKING_FILE, 'utf8').trim().split('\n').slice(1).map(l => l.slice(l.lastIndexOf(',') + 1))
+    : [];
+  if (previous.length === uris.length && previous.every((u, i) => u === uris[i])) {
+    console.log('Order unchanged since last week, skipping the Spotify update');
+  } else {
+    await replacePlaylist(api, TARGET, uris);
+    console.log(`Combined playlist rebuilt with ${uris.length} songs, best to worst`);
+  }
   console.log('Top 10:');
   ranked.slice(0, 10).forEach((s, i) => console.log(`  ${i + 1}. ${s.name} — ${s.artists.join(', ')} (${s.score.toFixed(1)})`));
 
