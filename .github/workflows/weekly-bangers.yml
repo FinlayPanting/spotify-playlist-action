@@ -7,14 +7,23 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write   # commit history/duplicates.md
-  issues: write     # open/close the duplicate-check issue
+  contents: read
+  issues: write     # open/close the duplicate-check reminder issue
 
 jobs:
   weekly-refresh:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+
+    # Ranking and duplicate reports live in a private repo. The deploy key can only
+    # read/write that one repo.
+    - name: Check out private data repo
+      uses: actions/checkout@v4
+      with:
+        repository: FinlayPanting/spotify-playlist-data
+        ssh-key: ${{ secrets.DATA_REPO_DEPLOY_KEY }}
+        path: data
 
     - uses: actions/setup-node@v4
       with:
@@ -36,31 +45,33 @@ jobs:
         WEEKLY_PLAYLIST_ID: 6pQpdPKcPUv2zwIYleSeNz
         STATSFM_USER: '1129577082'
         STATSFM_RANGE: lifetime
+        DATA_DIR: data
 
-    # One standing issue: opened (or updated) when duplicates exist, closed when the lists are clean.
+    - name: Save ranking and duplicate report to private repo
+      working-directory: data
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+        git add bangers-ranking.csv duplicates.md
+        git diff --cached --quiet && exit 0
+        git commit -m "Weekly ranking $(TZ=Europe/Vienna date +%F)"
+        git push
+
+    # Public reminder only: the details stay in the private repo.
     - name: Update duplicate-check issue
       env:
         GH_TOKEN: ${{ github.token }}
         DUPES: ${{ steps.weekly.outputs.duplicates }}
       run: |
         TITLE="Duplicate songs found in A-List / B-List / Year Faves"
+        BODY="$DUPES suspected duplicate(s) this week. Details: https://github.com/FinlayPanting/spotify-playlist-data/blob/main/duplicates.md"
         NUM=$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number')
         if [ "${DUPES:-0}" -gt 0 ]; then
           if [ -n "$NUM" ]; then
-            gh issue comment "$NUM" --body-file history/duplicates.md
+            gh issue comment "$NUM" --body "$BODY"
           else
-            gh issue create --title "$TITLE" --body-file history/duplicates.md
+            gh issue create --title "$TITLE" --body "$BODY"
           fi
         elif [ -n "$NUM" ]; then
           gh issue close "$NUM" --comment "All clear this week — no suspected duplicates. ✅"
         fi
-
-    - name: Commit duplicate report
-      run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
-        git add history/duplicates.md history/bangers-ranking.csv
-        git diff --cached --quiet && exit 0
-        git commit -m "Weekly duplicate check $(TZ=Europe/Vienna date +%F)"
-        git pull --rebase
-        git push

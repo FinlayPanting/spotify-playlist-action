@@ -9,7 +9,8 @@
 //   - popularity: Spotify's general popularity score
 // Each signal is 0-1; missing signals are left out and the rest re-weighted.
 //
-// Writes history/duplicates.md, history/bangers-ranking.csv and a job summary.
+// Writes duplicates.md and bangers-ranking.csv to DATA_DIR (a checkout of the private
+// spotify-playlist-data repo in GitHub Actions). Public logs and the job summary show totals only.
 
 const fs = require('fs');
 const path = require('path');
@@ -28,8 +29,9 @@ const SOURCES = [
   { name: 'Year Faves', id: process.env.FAVES_2025_PLAYLIST_ID }
 ];
 const TARGET = process.env.WEEKLY_PLAYLIST_ID;
-const REPORT_FILE = path.join(__dirname, 'history', 'duplicates.md');
-const RANKING_FILE = path.join(__dirname, 'history', 'bangers-ranking.csv');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'history');
+const REPORT_FILE = path.join(DATA_DIR, 'duplicates.md');
+const RANKING_FILE = path.join(DATA_DIR, 'bangers-ranking.csv');
 
 // "Mr. Brightside" by The Killers and "mr brightside" by the killers count as the same song
 function normalise(s) {
@@ -196,8 +198,6 @@ function buildReport(date, counts, dupes, added) {
     await replacePlaylist(api, TARGET, uris);
     console.log(`Combined playlist rebuilt with ${uris.length} songs, best to worst`);
   }
-  console.log('Top 10:');
-  ranked.slice(0, 10).forEach((s, i) => console.log(`  ${i + 1}. ${s.name} — ${s.artists.join(', ')} (${s.score.toFixed(1)})`));
 
   fs.mkdirSync(path.dirname(RANKING_FILE), { recursive: true });
   writeRanking(ranked);
@@ -205,9 +205,11 @@ function buildReport(date, counts, dupes, added) {
   const report = buildReport(date, counts, dupes, uris.length);
   fs.mkdirSync(path.dirname(REPORT_FILE), { recursive: true });
   fs.writeFileSync(REPORT_FILE, report);
-  if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, report);
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+      `Weekly playlist: ${uris.length} songs ranked. Suspected duplicates: ${dupes.length}. Details are in the private data repo.\n`);
+  }
   if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `duplicates=${dupes.length}\n`);
-  console.log('\n' + report);
 })().catch(err => {
   console.error('Weekly refresh failed:', err.message);
   process.exit(1);
