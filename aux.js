@@ -21,7 +21,9 @@ const MAX_PER_ARTIST = 3;
 const WEIGHTS = { artist: 0.40, track: 0.25, tags: 0.25, bangers: 0.10 };
 
 const ENGINE = (process.env.ENGINE || 'both').toLowerCase();       // lastfm | claude | both
-const VIBE = (process.env.VIBE || '').trim();
+const VIBE_RAW = (process.env.VIBE || '').trim();
+// "none" / "no" / "skip" spoken into the phone shortcut mean no vibe
+const VIBE = /^(none|no|nope|skip|nothing|n\/a|-)?\.?$/i.test(VIBE_RAW) ? '' : VIBE_RAW;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'history');
 const SEEDS_ID = process.env.AUX_SEEDS_PLAYLIST_ID;
 const OUT_LASTFM = process.env.AUX_PLAYLIST_ID;
