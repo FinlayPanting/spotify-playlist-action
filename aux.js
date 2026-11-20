@@ -69,25 +69,28 @@ function bangersScores() {
 
 // ---------- taste profile ----------
 async function buildProfile(lf, seeds) {
-  const seedArtists = new Map();          // norm -> { name, weight }
+  // Main artists count fully; featured artists (and things like "Grand Theft Auto VI"
+  // listed as an artist on soundtrack songs) only count a little.
+  const seedArtists = new Map();          // norm -> { name, weight, main }
   for (const s of seeds) {
-    for (const a of s.artists) {
+    s.artists.forEach((a, i) => {
       const k = normalise(a);
-      const e = seedArtists.get(k) || { name: a, weight: 0 };
-      e.weight += 1 / s.artists.length;
+      const e = seedArtists.get(k) || { name: a, weight: 0, main: false };
+      e.weight += i === 0 ? 1 : 0.2;
+      e.main = e.main || i === 0;
       seedArtists.set(k, e);
-    }
+    });
   }
 
   const artistSim = new Map();            // norm artist -> 0..1
   const bump = (name, v) => { const k = normalise(name); if (v > (artistSim.get(k) || 0)) artistSim.set(k, v); };
-  for (const k of seedArtists.keys()) artistSim.set(k, 1);
+  for (const [k, e] of seedArtists) artistSim.set(k, e.main ? 1 : 0.5);
 
   const trackSim = new Map();             // trackKey -> 0..1
   const tagProfile = {};
 
-  for (const { name, weight } of seedArtists.values()) {
-    for (const a of await lf.similarArtists(name)) bump(a.name, a.match * 0.9);
+  for (const { name, weight, main } of seedArtists.values()) {
+    if (main) for (const a of await lf.similarArtists(name)) bump(a.name, a.match * 0.9);
     const tags = await lf.artistTags(name);
     for (const [t, v] of Object.entries(tags)) tagProfile[t] = (tagProfile[t] || 0) + v * weight;
   }
@@ -110,7 +113,8 @@ async function scoreLibrary(lf, library, profile, bangers) {
   for (const a of primaries) artistTags.set(normalise(a), await lf.artistTags(a));
 
   for (const s of library) {
-    const artist = Math.max(0, ...s.artists.map(a => profile.artistSim.get(normalise(a)) || 0));
+    // a song's main artist counts fully, featured artists at 60%
+    const artist = Math.max(0, ...s.artists.map((a, i) => (profile.artistSim.get(normalise(a)) || 0) * (i === 0 ? 1 : 0.6)));
     const track = Math.max(0, ...s.artists.map(a => profile.trackSim.get(trackKey(s.name, a)) || 0));
     s.tags = artistTags.get(normalise(s.artists[0])) || {};
     const tags = cosine(profile.tagProfile, s.tags);
@@ -123,7 +127,9 @@ async function scoreLibrary(lf, library, profile, bangers) {
 
 function whyLastfm(s, profile) {
   const bits = [];
-  if (s.artists.some(a => profile.seedArtists.has(normalise(a)))) bits.push('seed artist');
+  const main = profile.seedArtists.get(normalise(s.artists[0]));
+  if (main && main.main) bits.push('seed artist');
+  else if (s.artists.some(a => profile.seedArtists.has(normalise(a)))) bits.push('features a seed artist');
   else if (s.parts.artist >= 0.3) bits.push(`similar artist (${Math.round(s.parts.artist * 100)}%)`);
   if (s.parts.track > 0) bits.push(`similar track (${Math.round(s.parts.track * 100)}%)`);
   const shared = Object.keys(s.tags).filter(t => profile.tagProfile[t]).slice(0, 3);
