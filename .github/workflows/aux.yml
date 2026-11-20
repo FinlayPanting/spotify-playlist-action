@@ -54,7 +54,7 @@ jobs:
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         AUX_SEEDS_PLAYLIST_ID: 0ibCkjRXx8wR0xBifos4DJ
         AUX_PLAYLIST_ID: 12lwqOcRkKKyHQXfxCnQuB
-        AUX_CLAUDE_PLAYLIST_ID: ''        # add the "Aux (Claude)" playlist ID here
+        AUX_CLAUDE_PLAYLIST_ID: 6Y11f078NU5MbTYiud53r6
         DATA_DIR: data
 
     - name: Save reports and cache to private repo
