@@ -98,3 +98,13 @@ You can check the results of each run in the "Actions" tab. Each run will show l
 A second workflow (`weekly-bangers.yml`, Sundays 18:41 Salzburg time) rebuilds a big combined playlist from A-List, B-List and Year Faves, ordered best to worst with each song only once. Each song gets a score out of 100 from three signals: which list it's on (A-List and Year Faves 1.0, B-List 0.4; 40%), plays from stats.fm (40%, blended so recent listening counts more: last 4 weeks 25%, last 6 months 40%, lifetime 35%) and Spotify popularity (20%). Missing signals are skipped and the rest re-weighted. Weights live at the top of `weekly.js`; the full ranking is saved to a separate private repo (`spotify-playlist-data`), so personal listening data isn't published. If the order hasn't changed since last week, the Spotify update is skipped. Requests are kept light: only the needed fields are fetched, stats.fm is paged gently, and rate limits are respected.
 
 It also checks for suspected duplicates (same song name and artist, ignoring case and punctuation) within and across those three lists. The detailed report is saved to the private data repo; a GitHub issue here gives a short heads-up when duplicates exist and closes itself once the lists are clean.
+
+## Aux playlist (on demand)
+
+`aux.yml` + `aux.js` build a playlist for when a friend has the aux. Add songs they play to the **Aux Seeds** playlist, then run the workflow (GitHub app → Actions → Aux Playlist → Run workflow).
+
+It builds a taste profile from Last.fm (similar artists, similar tracks, genre tags), scores every song in A-List, B-List, Year Faves and Everyday against it (artist 40%, track 25%, tags 25%, Bangers score 10%), and picks 100 songs: about 80 close matches plus 20 "stretch" picks, max 3 per artist, seed songs excluded.
+
+Two engines: **lastfm** picks by score into the Aux playlist; **claude** sends the seeds and a scored shortlist to Claude, which chooses and orders the 100 (optionally guided by a "vibe" input) into a separate playlist. Reports of why each song was picked, and the Last.fm cache, are saved in the private data repo.
+
+Secrets needed: `LASTFM_API_KEY` (free, last.fm/api) and, for the Claude engine, `ANTHROPIC_API_KEY`.

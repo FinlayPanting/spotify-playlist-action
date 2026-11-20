@@ -1,0 +1,69 @@
+name: Aux Playlist
+
+# Run on demand: GitHub app → Actions → Aux Playlist → Run workflow
+on:
+  workflow_dispatch:
+    inputs:
+      engine:
+        description: 'Which version to build'
+        type: choice
+        options: [both, lastfm, claude]
+        default: both
+      vibe:
+        description: 'Optional vibe for the Claude version (e.g. "late-night drive", "singalong")'
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  aux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    # Reports and the Last.fm cache live in the private data repo
+    - name: Check out private data repo
+      uses: actions/checkout@v4
+      with:
+        repository: FinlayPanting/spotify-playlist-data
+        ssh-key: ${{ secrets.DATA_REPO_DEPLOY_KEY }}
+        path: data
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install dependencies
+      run: npm install spotify-web-api-node
+
+    - name: Build Aux playlist
+      run: node aux.js
+      env:
+        ENGINE: ${{ inputs.engine }}
+        VIBE: ${{ inputs.vibe }}
+        SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+        SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+        SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
+        A_LIST_PLAYLIST_ID: ${{ secrets.A_LIST_PLAYLIST_ID }}
+        B_LIST_PLAYLIST_ID: ${{ secrets.B_LIST_PLAYLIST_ID }}
+        FAVES_2025_PLAYLIST_ID: ${{ secrets.FAVES_2025_PLAYLIST_ID }}
+        EVERYDAY_PLAYLIST_ID: ${{ secrets.EVERYDAY_PLAYLIST_ID }}
+        LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        AUX_SEEDS_PLAYLIST_ID: 0ibCkjRXx8wR0xBifos4DJ
+        AUX_PLAYLIST_ID: 12lwqOcRkKKyHQXfxCnQuB
+        AUX_CLAUDE_PLAYLIST_ID: ''        # add the "Aux (Claude)" playlist ID here
+        DATA_DIR: data
+
+    - name: Save reports and cache to private repo
+      if: always()
+      working-directory: data
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+        git add -A
+        git diff --cached --quiet && exit 0
+        git commit -m "Aux playlist $(TZ=Europe/Vienna date +%F)"
+        git push
